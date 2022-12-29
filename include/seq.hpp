@@ -6,17 +6,17 @@ class Seq {
         strtype_t seq;
         size_t len;
         PackedKmer packed;
-        Seq(chartype_t *seqin);
-        
+        OutArray& out;
+        int index_in_array;
+        bool is_dup;
+        Seq(chartype_t *seqin, int index_in_array);        
         keytype_t hashSelf();
         int compareHammingWith(Seq& other);
-        void markOut();
+        void markOut(int lead_index);
 
-    private:
-        void encodeSeqOTTF();
-        void reverseComplement();   
+    private: 
         void setSeq(chartype_t *seqin); 
-        void initPacked(); 
+        void packAndRevComp();
 };
 
 

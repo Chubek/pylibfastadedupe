@@ -31,6 +31,7 @@ using namespace std;
 
 struct OutArray {
     int *out_array;
+    int *out_array_revcomp;
     int size;
     mutex lock;
 
@@ -42,11 +43,16 @@ struct OutArray {
         lock.unlock();
     }
 
-    void setArr(int *out) {
+    void setArr(int *out, int *out_revcomp) {
         out_array = out;
+        out_array_revcomp = out_revcomp;
     }
 
     void setArrAt(int index, int value) {
+        out_array[index] = value;
+    }
+
+    void setArrRCAt(int index, int value) {
         out_array[index] = value;
     }
 

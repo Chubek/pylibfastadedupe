@@ -103,6 +103,16 @@ struct ImmX {
         reverseArray<uint64_t>(stored_u64, SIZE_IMM_EXPANDED_U64);
     }
     
+    int hammingWith(ImmX &against, const uint8_t *ones_lut) {
+        ImmX xrd = *this ^ against;
+        int diff = 0;
+
+        for (int i = 0; i < SIZE_IMM_EXPANDED_U8; i++) {
+            diff += ones_lut[i];
+        }
+
+        return diff;
+    }
 };
 
 struct PackedKmer {
