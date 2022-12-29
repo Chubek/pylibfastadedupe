@@ -6,10 +6,17 @@ class HashMap {
     public:
         V *arr;
         V getElementByKey(K key);
+        bool is_vector;
         void insertElement(K key, V value);
         vector<KVPair<V>> getAllKeyValues();
-        HashMap();
-        ~HashMap();
+        HashMap(bool is_vector): is_vector(is_vector) {
+            arr = NULL;
+            size = 0;
+            next_round = 0;
+        }
+        ~HashMap() {
+            free(arr);
+        }
     private:
         vector<keytype_t> hashes_list;
         keytype_t size;

@@ -1,18 +1,6 @@
 #include "../include/fastadedupe.hpp"
 
 template <Hashable K, typename V>
-HashMap<K, V>::HashMap() {
-    arr = NULL;
-    size = 0;
-    next_round_32 = 0;
-}
-
-template <Hashable K, typename V>
-HashMap<K, V>::~HashMap() {
-    free(arr);
-}
-
-template <Hashable K, typename V>
 void HashMap<K, V>::resizeArrayToNextRound() {
     size_t new_round = nextRound(size);
 
@@ -40,6 +28,14 @@ void HashMap<K, V>::insertElement(K key, V value) {
     if (hash > size) {
         size = hash;
         resizeArrayToNextRound();
+    }
+
+    switch (is_vector) {
+        case true:
+            arr[hash - 1].push_back(value);
+            break;
+        case false:
+            arr[hash - 1] = value;
     }
 
     arr[hash - 1] = value;

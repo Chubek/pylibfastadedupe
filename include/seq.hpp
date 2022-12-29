@@ -11,8 +11,7 @@ class Seq {
         bool is_dup;
         Seq(chartype_t *seqin, int index_in_array);        
         keytype_t hashSelf();
-        int compareHammingWith(Seq& other);
-        void markOut(int lead_index);
+        bool compareHammingWith(Seq& other);
 
     private: 
         void setSeq(chartype_t *seqin); 

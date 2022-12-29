@@ -28,20 +28,14 @@ using namespace std;
 #include "hashmap.hpp"
 #include "intr.hpp"
 #include "seq.hpp"
+#include "concurrent.hpp"
+#include "hash.hpp"
 
 struct OutArray {
     int *out_array;
     int *out_array_revcomp;
     int size;
-    mutex lock;
-
-    void lock() {
-        lock.lock();
-    }
-
-    void unlock() {
-        lock.unlock();
-    }
+    mutex this_lock;
 
     void setArr(int *out, int *out_revcomp) {
         out_array = out;
@@ -49,10 +43,12 @@ struct OutArray {
     }
 
     void setArrAt(int index, int value) {
+        const std::lock_guard<mutex> lock(this_lock);
         out_array[index] = value;
     }
 
     void setArrRCAt(int index, int value) {
+        const std::lock_guard<mutex> lock(this_lock);
         out_array[index] = value;
     }
 

@@ -54,19 +54,35 @@ void Seq::packAndRevComp() {
     packed.init(seq);
 }
 
-int Seq::compareHammingWith(Seq& other) {
+bool Seq::compareHammingWith(Seq& other) {
     int diff = packed.packed.hammingWith(other.packed.packed, lookup_num_diffs);
     int diff_revcomp = packed.rev_comp.hammingWith(other.packed.rev_comp, lookup_num_diffs);
 
     if (diff < 1) {
-        out.lock();
         out.setArrAt(index_in_array, other.index_in_array);
-        out.unlock();
     }
 
     if (diff_revcomp < 1) {
-        out.lock();
         out.setArrRCAt(index_in_array, other.index_in_array);
-        out.unlock();
     }
+
+    return diff < 1 ? true : false;
 }
+
+keytype_t Seq::hashSelf() {
+    keytype_t hash1 = 0;
+    keytype_t hash2 = 0;
+
+    uint64_t first_letters = packed.packed.stored_u64[0];
+    uint64_t last_letters = packed.packed.stored_u64[SIZE_IMM_EXPANDED_U64 - 1];
+
+    string substr = seq.substr(seq.length() / 3, 3 * (seq.length() / 4));
+
+    HASH64(first_letters, hash1, last_letters);
+    HASHSTR(substr, hash2);
+
+    keytype_t hash2_shifted = hash2 >> 32;
+    keytype_t final_hash = hash1 ^ hash2_shifted;
+
+    return MASKU64_32(final_hash);
+}   
