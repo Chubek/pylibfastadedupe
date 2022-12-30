@@ -10,18 +10,18 @@ typedef uint64_t stored_u64_t[SIZE_IMM_EXPANDED_U64];
 typedef uint32_t seqsize_t;
 typedef char chartype_t;
 typedef string strtype_t;
-typedef uint64_t keytype_t;
+typedef uint64_t hashtype_t;
 typedef __m256i immx_t[SIZE_IMM];
 
 
 template <typename T>
 concept Hashable = requires(T o) {
-    { o.hashSelf() } -> convertible_to<keytype_t>;
+    { o.hashSelf() } -> convertible_to<hashtype_t>;
 };
 
 template <typename V>
 struct KVPair {
-    keytype_t key;
+    hashtype_t key;
     V& value;
 };
 

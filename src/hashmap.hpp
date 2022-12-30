@@ -1,7 +1,7 @@
 #include "../include/fastadedupe.hpp"
 
-template <Hashable K, typename V>
-void HashMap<K, V>::resizeArrayToNextRound() {
+template <Hashable K, typename V, typename VS>
+void HashMap<K, V, VS>::resizeArrayToNextRound() {
     size_t new_round = nextRound(size);
 
     if (new_round > next_round_32) {
@@ -21,9 +21,9 @@ void HashMap<K, V>::resizeArrayToNextRound() {
     }
 }
 
-template <Hashable K, typename V>
-void HashMap<K, V>::insertElement(K key, V value) {
-    keytype_t hash = key.hashSelf();
+template <Hashable K, typename V, typename VS>
+void HashMap<K, V, VS>::insertElement(K key, VS value) {
+    hashtype_t hash = key.hashSelf();
 
     if (hash > size) {
         size = hash;
@@ -32,20 +32,32 @@ void HashMap<K, V>::insertElement(K key, V value) {
 
     switch (is_vector) {
         case true:
-            arr[hash - 1].push_back(value);
+            if containsKey(hash - 1) {
+                arr[hash - 1].push_back(value);
+            } else {
+                vector<V> v;
+                v.push_back(value);
+
+                arr[hash - 1] = v;
+                hashes_list.push_back(hash - 1);
+            }
+            
             break;
         case false:
             arr[hash - 1] = value;
-    }
 
-    arr[hash - 1] = value;
-    hashes_list.push_back(hash - 1);
+            if (!containsKey(hash - 1)) {
+                hashes_list.push_back(hash - 1);
+            }
+
+            break;
+    }
 }
 
 
-template <Hashable K, typename V>
-V HashMap<K, V>::getElementByKey(K key) {
-    keytype_t hash = key.hashSelf();
+template <Hashable K, typename V, typename VS>
+V HashMap<K, V, VS>::getElementByKey(K key) {
+    hashtype_t hash = key.hashSelf();
 
     if (hash > size) {
         cout << "Error: Element is not contained in hashmap.";
@@ -56,8 +68,8 @@ V HashMap<K, V>::getElementByKey(K key) {
 }
 
 
-template<Hashable K, typename V>
-vector<KVPair<V>> HashMap<K, V>::getAllKeyValues() {
+template <Hashable K, typename V, typename VS>
+vector<KVPair<V>> HashMap<K, V, VS>::getAllKeyValues() {
     vector<KVPair<V>> all_vector;
  
     for (int i = 0; i < size; i++) {
@@ -65,4 +77,20 @@ vector<KVPair<V>> HashMap<K, V>::getAllKeyValues() {
     }
 
     return all_vector;
+}
+
+template <Hashable K, typename V, typename VS>
+vector<V&> HashMap<K, V, VS>::getAllValues() {
+    vector<V&> vec_ref_vals;
+
+    for (hashtype_t key: hashes_list) {
+        vec_ref_vals.push_back(arr[key]);
+    }
+
+    return vec_ref_vals;
+}
+
+template <Hashable K, typename V, typename VS>
+bool HashMap<K, V, VS>::containsKey(hashtype_t key) {
+    return find(hashes_list.begin(), hashes_list.end(), key) != hashes_list.end();
 }
