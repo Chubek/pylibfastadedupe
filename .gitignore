@@ -1,1 +1,8 @@
 .vscode/
+env/
+_*
+*cxx
+install
+fastadedupe.py
+*.o
+*.so
