@@ -25,36 +25,26 @@ const uint8_t lookup_num_diffs[256] = {
     3, 4, 4, 4};
 
 
-HashMap::HashMap() { }
+HashMap::HashMap(std::vector<std::reference_wrapper<Sequence>> ref_seqs): ref_seqs(ref_seqs) {}
 
-void HashMap::insertElement(Sequence key, Sequence value)
+void HashMap::mapValues()
 {
-    hashtype_t hash = key.hashSelf();
+    for (auto seq: ref_seqs) {
+        auto s = seq.get();
+        auto hash = s.hashSelf();
 
-    if (!containsKey(hash)) {
-        Node node;
-        node.insertIntoNode(value);
-        map[hash] = node; 
-        hashes_list.push_back(hash);
+        if (!containsKey(hash)) {
+            std::vector<seqsize_t> v_bin;
+            v_bin.push_back(s.index_in_array);
 
-        return;
-    }   
-
-    map.at(hash).insertIntoNode(value);   
-}
-
-std::vector<std::reference_wrapper<Node>> HashMap::getAllValues()
-{
-    std::vector<std::reference_wrapper<Node>> vec_ref_vals;
-
-    for (hashtype_t key : hashes_list)
-    {
-        std::reference_wrapper<Node> rwrapper = std::reference_wrapper<Node>(map.at(key));
-        vec_ref_vals.push_back(rwrapper);
+            map[hash] = v_bin;
+            hashes_list.push_back(hash);
+        } else {
+            map[hash].push_back(s.index_in_array);
+        }
     }
-
-    return vec_ref_vals;
 }
+
 
 bool HashMap::containsKey(hashtype_t key)
 {
@@ -67,26 +57,23 @@ void Sequence::setSequence()
     seq = s;
 }
 
-Sequence::Sequence(chartype_t *seqin, int index_in_array, std::shared_ptr<OutArray> out_array)
+Sequence::Sequence(chartype_t *seqin, int index_in_array, std::shared_ptr<OutArray*> out_array)
     : out_array(out_array)
 {
     raw_seq = seqin;
     index_in_array = index_in_array;
     setSequence();
-}
-
-void Sequence::packAndRevComp()
-{
-    packed.init(seq);
+    initPacked();
 }
 
 bool Sequence::compareHammingWith(Sequence &other)
 {
-    int diff = packed.packed.hammingWith(other.packed.packed, lookup_num_diffs);
+    int diff = packed.hammingWith(other.packed, lookup_num_diffs);
 
-    if (diff < 1)
+    if (diff <= 1)
     {
-        out_array.get()->setArrAt(index_in_array, other.index_in_array);
+        auto out = *out_array.get();
+        out->setArrAt(index_in_array, other.index_in_array);
         is_dup = true;
 
         return true;
@@ -97,11 +84,16 @@ bool Sequence::compareHammingWith(Sequence &other)
 
 bool Sequence::revCompcompareHammingWith(Sequence &other)
 {
-    int diff_revcomp = packed.rev_comp.hammingWith(other.packed.rev_comp, lookup_num_diffs);
+    ImmX rev_comp = packed;
+    ImmX other_rev_comp = other.packed;
+    rev_comp.reverseU64Stored();
+    other_rev_comp.reverseU64Stored();
+    int diff_revcomp = rev_comp.hammingWith(other_rev_comp, lookup_num_diffs);
 
-    if (diff_revcomp < 1)
+    if (diff_revcomp <= 1)
     {
-        out_array.get()->setArrRCAt(index_in_array, other.index_in_array);
+        auto out = *out_array.get();
+        out->setArrRCAt(index_in_array, other.index_in_array);
         is_dup = true;
 
         return true;
@@ -115,24 +107,38 @@ hashtype_t Sequence::hashSelf()
     hashtype_t hash1 = 0;
     hashtype_t hash2 = 0;
 
-    uint64_t first_letters = packed.packed.stored_u64[0];
-    uint64_t last_letters = packed.packed.stored_u64[SIZE_IMM_EXPANDED_U64 - 1];
+    uint64_t first_letters = packed.stored_u64[0];
+    uint64_t last_letters = packed.stored_u64[SIZE_IMM_EXPANDED_U64 - 1];
 
     std::string substr = seq.substr(seq.length() / 3, 3 * (seq.length() / 4));
 
-    HASH64(first_letters, hash1, last_letters);
-    HASHSTR(substr, hash2);
+    hash1 = (~first_letters + (first_letters << 21)) & last_letters;                  
+    hash1 = hash1 ^ hash1 >> 24;                          
+    hash1 = ((hash1 + (hash1 << 3)) + (hash1 << 8)) & last_letters; 
+    hash1 = hash1 ^ hash1 >> 14;                          
+    hash1 = ((hash1 + (hash1 << 2) + (hash1 << 4))) & last_letters; 
+    hash1 = hash1 ^ hash1 >> 28;                          
+    hash1 = (hash1 + (hash1 << 31)) & last_letters; 
+    
+    
+    hash2 = 5381;                      
+    for (int i = 0; i < substr.length();  i++)   
+            hash2 = ((hash2 << 5) + hash2) + substr[i]; 
 
     hashtype_t hash2_shifted = hash2 >> 32;
     hashtype_t final_hash = hash1 ^ hash2_shifted;
 
-    return MASKU64_32(final_hash);
+    return final_hash;
 }
 
-void Node::insertIntoNode(Sequence seq) {
+void Node::insertIntoNode(std::reference_wrapper<Sequence> seq) {
     seq_vec.push_back(seq);
 }
 
 Sequence& Sequence::getSelf() {
     return *this;
+}
+
+void Sequence::initPacked() {
+    packed = getPacked(seq);
 }

@@ -7,37 +7,37 @@ public:
     chartype_t *raw_seq;
     strtype_t seq;
     size_t len;
-    PackedKmer packed;
-    std::shared_ptr<OutArray> out_array;
-    int index_in_array;
+    ImmX packed;
+    std::shared_ptr<OutArray*> out_array;
+    seqsize_t index_in_array;
     bool is_dup;
     hashtype_t hashSelf();
-    Sequence(chartype_t *seqin, int index_in_array, std::shared_ptr<OutArray> out_array);
+    Sequence(chartype_t *seqin, int index_in_array, std::shared_ptr<OutArray*> out_array);
     bool compareHammingWith(Sequence &other);
     bool revCompcompareHammingWith(Sequence &other);
     Sequence& getSelf();
+    void initPacked();
 
 private:
     void setSequence();
-    void packAndRevComp();
 };
 
 struct Node {
-    std::vector<Sequence> seq_vec;
+    std::vector<std::reference_wrapper<Sequence>> seq_vec;
     int size;
 
-    void insertIntoNode(Sequence seq); 
+    void insertIntoNode(std::reference_wrapper<Sequence> seq); 
 };
 
 class HashMap
 {
 public:
-    std::unordered_map<hashtype_t, Node> map;
-    void insertElement(Sequence key, Sequence value);
-    std::vector<std::reference_wrapper<Node>> getAllValues();
+    std::unordered_map<hashtype_t, std::vector<seqsize_t>> map;
+    std::vector<std::reference_wrapper<Sequence>> ref_seqs;
+    void mapValues();
     std::vector<hashtype_t> hashes_list;
 
-    HashMap();
+    HashMap(std::vector<std::reference_wrapper<Sequence>> ref_seqs);
 
 private:
     bool containsKey(hashtype_t key);

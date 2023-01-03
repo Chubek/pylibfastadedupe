@@ -21,6 +21,6 @@
                         RES = ((RES << 5) + RES) + __ARR[__i]; \
         }
 
-#define MASKU64_32(h) h & 0x00000000FFFFFFFF
+#define MASKU64_32(h) h & 0x0000DCBAFFFFFFFF
 
 #endif

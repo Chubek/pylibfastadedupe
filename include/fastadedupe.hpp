@@ -29,7 +29,6 @@
 
 typedef uint8_t stored_u8_t[SIZE_IMM_EXPANDED_U8];
 typedef uint64_t stored_u64_t[SIZE_IMM_EXPANDED_U64];
-typedef uint64_t packed_u64_t[SIZE_IMM_PACKED];
 typedef uint32_t seqsize_t;
 typedef char chartype_t;
 typedef std::string strtype_t;
@@ -55,9 +54,6 @@ struct OutArray
 #include "hash.hpp"
 #include "seqmap.hpp"
 #include "concurrent.hpp"
-
-std::vector<Sequence> convertSequences(chartype_t *seqs_char[], int size, OutArray& out_arr);
-HashMap clusterSequences(std::vector<Sequence> &seqs);
 
 // main python interface for libfastadedupe
 // seqs must be null-terminated of int8 type (not signed)

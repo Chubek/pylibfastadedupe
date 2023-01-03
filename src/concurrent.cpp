@@ -1,8 +1,10 @@
 #include "../include/fastadedupe.hpp"
 
-void assignClustersToThreads(std::vector<std::reference_wrapper<Node>> values, uint32_t num_threads_given, uint32_t num_workers_given, bool do_revcomp)
+void assignClustersToThreads(HashMap &map, uint32_t num_threads_given, uint32_t num_workers_given, bool do_revcomp)
 {
-    int size = values.size();
+    std::cout << "Starting main operation...\n";
+
+    int size = map.hashes_list.size();
     int num_threads = num_threads_given;
     int num_workers = num_workers_given;
 
@@ -18,7 +20,14 @@ void assignClustersToThreads(std::vector<std::reference_wrapper<Node>> values, u
 
     auto _ = checkThreadNumExceeds(num_workers, num_threads);
 
-    MainQueue queue;
+    std::vector<MainQueue> queues_main(num_workers);
+    std::vector<std::reference_wrapper<MainQueue>> queues;
+
+    for (int i = 0; i < num_workers; i++) {
+        std::reference_wrapper<MainQueue> q_ref = std::reference_wrapper<MainQueue>(queues_main[i]);
+        queues.push_back(q_ref);
+    }
+
     std::vector<std::thread> main_threads_objs;
     std::vector<std::thread> worker_threads_objs;
 
@@ -27,54 +36,62 @@ void assignClustersToThreads(std::vector<std::reference_wrapper<Node>> values, u
     {
         int end = size - added < num_threads ? i + (size - added) : i + num_threads;
 
-        main_threads_objs.push_back(std::thread(runBranchThread, std::ref(queue), std::cref(values), i, end));
+        main_threads_objs.push_back(std::thread(runBranchThread, std::ref(queues), std::cref(map), i, end));
 
         added++;
     }
 
     for (int i = 0; i < num_workers; i++)
     {
-        worker_threads_objs.push_back(std::thread(runWorkerThread, std::ref(queue), do_revcomp));
+        worker_threads_objs.push_back(std::thread(runWorkerThread, queues[i], map.ref_seqs, do_revcomp));
     }
+    
+    SLEEP_THREAD;
 
+    std::cout << "\nJoining worker threads...\n";
     std::for_each(worker_threads_objs.begin(), worker_threads_objs.end(), [](std::thread &wrk)
-                  { wrk.join(); });
+                  { wrk.join(); std::cout << "=";  });
+    std::cout << "\nJoining main threads\n";
     std::for_each(main_threads_objs.begin(), main_threads_objs.end(), [](std::thread &brch)
-                  { brch.join(); });
-}
+                  { brch.join(); std::cout << "="; });
+    std::cout << "\n";
+}   
 
 bool checkThreadNumExceeds(int num_workers, int num_threads)
 {
-    std::cout << "Your CPU supports " << std::thread::hardware_concurrency() << " concurrent hardware threads.";
-    std::cout << "Started with an overall " << (num_threads + num_workers) << " virtual threads.";
+    std::cout << "\nYour CPU supports " << std::thread::hardware_concurrency() << " concurrent hardware threads.\n";
+    std::cout << "\nStarted with an overall " << (num_threads + num_workers) << " virtual threads.\n";
 
     return true;
 }
 
-void runWorkerThread(MainQueue &queue, bool do_revcomp)
+void runWorkerThread(std::reference_wrapper<MainQueue> queue_ref, std::vector<std::reference_wrapper<Sequence>> ref_seqs, bool do_revcomp)
 {
     SLEEP_THREAD;
+
+    auto queue = queue_ref.get();
 
     while (!queue.isEmpty())
     {
         auto curr = queue.pop();
-        auto curr_seqs = curr.get();
-
-        for (int i = 0; i < curr_seqs.seq_vec.size(); i++)
+        
+        for (int i = 0; i < curr.size(); i++)
         {
-            Sequence &lead = curr_seqs.seq_vec[i].getSelf();
+            auto ref_lead = ref_seqs[curr[i]];
+            Sequence &lead = ref_lead.get().getSelf();
             if (lead.is_dup)
                 continue;
 
         set_skip:
             bool skip = false;
 
-            for (int j = i + 1; j < curr_seqs.seq_vec.size(); j++)
+            for (int j = i + 1; j <  curr.size(); j++)
             {
                 if (skip)
                     goto set_skip;
 
-                Sequence &candidate = curr_seqs.seq_vec[j].getSelf();
+                auto ref_candidate = ref_seqs[curr[j]];
+                Sequence &candidate = ref_candidate.get().getSelf();
                 if (candidate.is_dup)
                     continue;
 
@@ -88,14 +105,20 @@ void runWorkerThread(MainQueue &queue, bool do_revcomp)
     }
 }
 
-void runBranchThread(MainQueue &queue, const std::vector<std::reference_wrapper<Node>> &clusters, int start, int end)
-{
-    SLEEP_THREAD;
+void runBranchThread(std::vector<std::reference_wrapper<MainQueue>> &queues, const HashMap &map, int start, int end)
+{   
+    int max_size = queues.size();
+    int j = 0;
+
 
     for (int i = start; i < end; i++)
     {
-        auto seqs = clusters.at(i);
-        queue.push(seqs);
+        if (j >= max_size) j = 0;
+
+        std::vector<seqsize_t> curr_seqs;
+        auto curr_bucket = map.map.at(map.hashes_list[i]);
+
+        queues[j++].get().push(curr_bucket);
     }
 }
 
@@ -104,17 +127,17 @@ MainQueue::MainQueue()
     this_lock = new std::mutex();
 }
 
-std::reference_wrapper<Node> MainQueue::pop()
+std::vector<seqsize_t> MainQueue::pop()
 {
     this_lock->lock();
-    std::reference_wrapper<Node> s = q.front();
+    std::vector<seqsize_t> s = q.front();
     q.pop();
     this_lock->unlock();
 
     return s;
 };
 
-void MainQueue::push(std::reference_wrapper<Node> s)
+void MainQueue::push(std::vector<seqsize_t> s)
 {
     this_lock->lock();
     q.push(s);
